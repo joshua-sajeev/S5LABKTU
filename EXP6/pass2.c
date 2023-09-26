@@ -1,130 +1,125 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
-int searchOptab(char opcode[10]){  //for searching in optab and returning opcode
-    FILE *optab;
-    char op[10];
-    int value;
-    optab=fopen("optab.txt","r");
-    while(!feof(optab)){
-        fscanf(optab,"%s%d",op,&value);
-        if(strcmp(op,opcode)==0){
-            return value;
-        }
-    }
-    fclose(optab);
-    return -1;
-}
-int searchSymtab(char label[10]){  //for searching in symbab and returning its location
-    FILE *symtab;
-    char sym[10];
-    int value;
-    symtab=fopen("symtab.txt","r");
-    while(!feof(symtab)){
-        fscanf(symtab,"%s%d",sym,&value);
-        if(strcmp(sym,label)==0){
-            return value;
-        }
-    }
-    fclose(symtab);
-    return -1;
-}
-int main(){
-    FILE *intermediate,*output,*header,*text,*end,*symtab,*optab;
-    char label[10],opcode[10],operand[10],obcode[10],obcodeTe[100]="",obcodeCopy[10];
-    int LOCCTR,symaddr,opaddr,i,sa,leng,lenObCode=0,flag=0,flag2=0,opc; 
+FILE *fp1,*fp2,*fp3,*fp4,*fp5,*fp6;
+char label[30],adddr[30],opcode[10],hexcode[30];
+char t1[20],t2[20],t3[20],t4[20],address[10],operand[10],length[10],size[10],a[10],ad[10];
+int s=-1,o=-1,i,j;
+struct optab{
+    char opcode[10];
+    char hexcode[10];
+}ot[30];
 
-    intermediate=fopen("intermediate.txt","r");       //opening all needed files
-    output=fopen("output.txt","w");
-    header=fopen("header.txt","w");
-    text=fopen("text.txt","w");
-    end=fopen("end.txt","w");
+struct symtab{
+    char label[10];
+    char addr[10];
+}st[30];
 
-    fscanf(intermediate,"%s%s%s",label,opcode,operand);      //for label start
-    if(strcmp(opcode,"START")==0){
-        fprintf(header,"H^00%s^00%s",label,operand);
-        fprintf(text,"T^00%s",operand);
-        fprintf(end,"E^00%s",operand);
-        fprintf(output,"\t%s\t%s\t%s\n",label,opcode,operand);
-        sa=atoi(operand);
+void read_optab(){
+    while(1){
+        o++;
+        fscanf(fp3,"%s\t%s",ot[o].opcode,ot[o].hexcode);
+        if(getc(fp3)==EOF)
+            break;
     }
-    while (strcmp(opcode,"END")!=0){
-        fscanf(intermediate,"%d%s%s%s",&LOCCTR,label,opcode,operand);
-        if(strcmp(label,"**")==0){
-            opaddr=searchOptab(opcode);
-            if(opaddr!=-1){
-                symaddr=searchSymtab(operand);
-                if(symaddr!=-1){
-                    sprintf(obcode,"%02d%d",opaddr,symaddr);
-                    lenObCode+=3;
-                } 
-                strcat(obcodeTe,"^");
-                strcat(obcodeTe,obcode);
-            }
+}
+
+void read_symtab(){
+    while(1){
+        s++;
+        fscanf(fp2,"%s\t%s",st[s].label,st[s].addr);
+        if(getc(fp2)==EOF)
+            break;
+    }
+}
+
+void read_line(){
+    strcpy(t1,"");
+    strcpy(t2,"");
+    strcpy(t3,"");
+    strcpy(t4,"");
+    fscanf(fp1,"%s",t1);
+    if(getc(fp1)!='\n'){
+        fscanf(fp1,"%s",t2);
+        if(getc(fp1)!='\n'){
+            fscanf(fp1,"%s",t3);
+            if(getc(fp1)!='\n')
+                fscanf(fp1,"%s",t4);
         }
-        else if(strcmp(opcode,"BYTE")==0){
-            if(flag==0){             //for entering in new line in text file if it is first byte or word opcode
-                fprintf(text,"^%02d%s",lenObCode,obcodeTe);
-                strcpy(obcodeTe,"");
-                lenObCode=0;
-                flag=1;
-                flag2=1;
-            }
-            for(i=strlen(operand);i<(6+3);i++){
-                strcat(obcodeCopy,"0");
-            }
-            for(i=2;i<strlen(operand)-1;i++){
-                strncat(obcodeCopy,&operand[i],1);
-            }
-            lenObCode+=3;
-            sprintf(obcode,"%s",obcodeCopy);
-            strcat(obcodeTe,"^");
-            strcat(obcodeTe,obcode);
-        }
-        else if(strcmp(opcode,"WORD")==0){
-            //strcpy(obcode,"");
-            if(flag==0){           //for entering in new line in text file if it is first word or byte opcode
-                fprintf(text,"^%02d%s",lenObCode,obcodeTe);
-                strcpy(obcodeTe,"");
-                lenObCode=0;
-                flag=1;
-                flag2=1;
-            }
-            for(i=strlen(operand);i<6;i++){
-                strcat(obcode,"0");
-            }
-            strcat(obcode,operand);
-            lenObCode+=3;
-            strcat(obcodeTe,"^");
-            strcat(obcodeTe,obcode);
+    }
+    if(strcmp(t1,"")!=0 && strcmp(t2,"")!=0 && strcmp(t3,"")!=0 && strcmp(t4,"")!=0){
+        strcpy(address,t1);
+        strcpy(label,t2);
+        strcpy(opcode,t3);
+        strcpy(operand,t4);
+    }
+    else if(strcmp(t1,"")!=0 && strcmp(t2,"")!=0 && strcmp(t3,"")!=0 && strcmp(t4,"")==0){
+        strcpy(address,t1);
+        strcpy(label,"");
+        strcpy(opcode,t2);
+        strcpy(operand,t3);
+    }
+    else if(strcmp(t1,"")!=0 && strcmp(t2,"")!=0 && strcmp(t3,"")==0 && strcmp(t4,"")==0){
+        if(strcmp(t1,"END")==0){
+            strcpy(address,"");
+            strcpy(label,"");
+            strcpy(opcode,t1);
+            strcpy(operand,t2);
         }
         else{
-            strcpy(obcode,"");
-        }
-        fprintf(output,"%d\t%s\t\t%s\t\t%s\t\t%s\n",LOCCTR,label,opcode,operand,obcode);
-        if(strcmp(obcode,"")!=0){             //checking is it a valid obcode
-            if(flag2==1 && (strcmp(obcodeTe,"")!=0)){      //for printing new line in text file
-                fprintf(text,"\nT^%06d",LOCCTR);
-                flag2=0;
-            }
-            if(lenObCode>17){                             //for printing new line in text file
-                fprintf(text,"^%02d%s",lenObCode,obcodeTe);
-                strcpy(obcodeTe,"");
-                lenObCode=0;
-                flag2=1;
-            }
+            strcpy(address,t1);
+            strcpy(label,"");
+            strcpy(opcode,t2);
+            strcpy(operand,"");
         }
     }
-    if(lenObCode>0){              //for printing last line of text file
-        fprintf(text,"^%02d%s",lenObCode,obcodeTe);
+}
+void main(){
+    fp1=fopen("input.txt","r");
+    fp2=fopen("symtab.txt","r");
+    fp3=fopen("optab.txt","r");
+    fp4=fopen("length.txt","r");
+    fp5=fopen("assemlist.txt","w");
+    fp6=fopen("objcode.txt","w");
+    fscanf(fp4,"%s %s",length,size);
+    read_optab();
+    read_symtab();
+    fscanf(fp1,"%s %s %s",label,opcode,operand);
+    strcpy(st->addr,operand);
+    if(strcmp(opcode,"START")==0){
+        fprintf(fp5,"\t%s\t%s\t%s\n",label,opcode,operand);
+        fprintf(fp6,"H^%s ^00%s^0000%s\n",label,operand,length);
+        fprintf(fp6,"T^00%s%x",operand,atoi(size));
+        read_line();
     }
-    leng=LOCCTR-sa;
-    fprintf(header,"^%06d",leng);
-    fclose(intermediate);
-    fclose(output);
-    fclose(header);
-    fclose(text);
-    fclose(end);
-    printf("Output generated successfully");
-    return 0;
+    while(strcmp(opcode,"END")!=0){
+        if(strcmp(opcode,"BYTE")==0){
+            fprintf(fp5,"%s\t%s\t%s\t%s\t",address,label,opcode,operand);
+            sprintf(ad,"%x",operand[2]);
+            fprintf(fp5,"%s\n",ad);
+            fprintf(fp6,"^%s",ad);
+        }
+        else if(strcmp(opcode,"WORD")==0){
+            sprintf(a,"%x",atoi(operand));
+            fprintf(fp5,"%s\t%s\t%s\t%s\t0000%s\n",address,label,opcode,operand,a);
+            fprintf(fp6,"^0000%s",a);
+        }
+        else if(strcmp(opcode,"RESB")==0 || (strcmp(opcode,"RESW")==0)){
+            fprintf(fp5,"%s\t%s\t%s\t%s\t0000%s\n",address,label,opcode,operand,a);
+        }
+        else{
+            j=0;
+            while(strcmp(opcode,ot[j].opcode)!=0)
+                j++;
+            i=0;
+            while(strcmp(operand,st[i].label)!=0)
+                i++;
+            fprintf(fp5,"%s\t%s\t%s\t%s\t%s%s\n",address,label,opcode,operand,ot[j].hexcode,st[i].addr);
+            fprintf(fp6,"^%s%s",ot[j].hexcode,st[i].addr);
+        }
+        read_line();
+    }
+    fprintf(fp5,"\t%s\t%s\t%s",label,opcode,operand);
+    fprintf(fp6,"\nE^00%s",st->addr);
+    //getch();
 }
